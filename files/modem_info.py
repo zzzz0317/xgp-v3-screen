@@ -17,7 +17,7 @@ def get_modem_info():
         return None
     target_keys = {
         'revision', 'temperature', 'voltage', 'connect_status',
-        'SIM Status', 'ISP', 'CQI UL', 'CQI DL', 'AMBR UL', 'AMBR DL', 'network_mode',
+        'SIM Status', 'sim_status', 'ISP', 'CQI UL', 'CQI DL', 'AMBR UL', 'AMBR DL', 'network_mode',
         "MMC", "MCC", "MNC" # https://github.com/FUjr/QModem/pull/66
     }
     
@@ -47,11 +47,16 @@ def get_modem_info():
                 "max_value": str(d["max_value"]),
                 "unit": str(d["unit"]),
             }
+    
+    default_unknown_value_relative_to_sim_status = "-"
+    sim_status = result.get('SIM Status', result.get('sim_status', 'unknown'))
+    if sim_status in ["miss"]:
+        default_unknown_value_relative_to_sim_status = "无SIM卡"
             
     if result.get("network_mode", "unknown").endswith(" Mode"):
         result["network_mode"] = result["network_mode"][:-5]
     if result.get("ISP", "????") == "????":
-        result["ISP"] = f"{result.get('MMC', result.get('MCC', ''))}{result.get('MNC', 'unknown')}" # https://github.com/FUjr/QModem/pull/66
+        result["ISP"] = f"{result.get('MMC', result.get('MCC', ''))}{result.get('MNC', default_unknown_value_relative_to_sim_status)}" # https://github.com/FUjr/QModem/pull/66
         if result["ISP"] in ["46000", "46002", "46007"]:
             result["ISP"] = "中国移动"
         elif result["ISP"] in ["46001", "46006", "46009"]:
@@ -68,7 +73,7 @@ def get_modem_info():
     if result.get('CQI UL', '') == "":
         result['CQI UL'] = "-"
     if result['CQI DL'] == "-" and result['CQI UL'] == "-":
-        result['CQI'] = "unknown"
+        result['CQI'] = default_unknown_value_relative_to_sim_status
     else:
         result['CQI'] = f"DL {result.get('CQI DL')} UL {result.get('CQI UL')}"
         
@@ -77,19 +82,19 @@ def get_modem_info():
     if result.get('AMBR UL', '') == "":
         result['AMBR UL'] = "-"
     if result['AMBR DL'] == "-" and result['AMBR UL'] == "-":
-        result['AMBR'] = "unknown"
+        result['AMBR'] = default_unknown_value_relative_to_sim_status
     else:
         result['AMBR'] = f"{result.get('AMBR DL')}/{result.get('AMBR UL')}"
     
     result_txt.append(f"revision:{result.get('revision', 'unknown')}")
     result_txt.append(f"temperature:{result.get('temperature', 'unknown')}")
     result_txt.append(f"voltage:{result.get('voltage', 'unknown')}")
-    result_txt.append(f"connect:{result.get('connect_status', 'unknown')}")
-    result_txt.append(f"sim:{result.get('SIM Status', 'unknown')}")
-    result_txt.append(f"isp:{result.get('ISP', 'unknown')}")
+    result_txt.append(f"connect:{result.get('connect_status', default_unknown_value_relative_to_sim_status)}")
+    result_txt.append(f"sim:{sim_status}")
+    result_txt.append(f"isp:{result.get('ISP', default_unknown_value_relative_to_sim_status)}")
     result_txt.append(f"cqi:{result['CQI']}")
     result_txt.append(f"ambr:{result['AMBR']}")
-    result_txt.append(f"networkmode:{result.get('network_mode', 'unknown')}")
+    result_txt.append(f"networkmode:{result.get('network_mode', default_unknown_value_relative_to_sim_status)}")
     
     result_progress_keys = list(result_progress.keys())
     
