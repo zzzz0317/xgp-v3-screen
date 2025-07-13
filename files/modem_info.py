@@ -51,7 +51,7 @@ def get_modem_info():
     if result.get("network_mode", "unknown").endswith(" Mode"):
         result["network_mode"] = result["network_mode"][:-5]
     if result.get("ISP", "????") == "????":
-        result["ISP"] = f"{result.get('MMC', result.get('MCC', ''))}{result['MNC']}" # https://github.com/FUjr/QModem/pull/66
+        result["ISP"] = f"{result.get('MMC', result.get('MCC', ''))}{result.get('MNC', 'unknown')}" # https://github.com/FUjr/QModem/pull/66
         if result["ISP"] in ["46000", "46002", "46007"]:
             result["ISP"] = "中国移动"
         elif result["ISP"] in ["46001", "46006", "46009"]:
