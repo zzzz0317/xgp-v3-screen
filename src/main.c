@@ -34,8 +34,18 @@ static const char *getenv_default(const char *name, const char *dflt)
 static void lv_linux_disp_init(void)
 {
     const char *device = getenv_default("LV_LINUX_FBDEV_DEVICE", "/dev/fb0");
+    if (device && device[0] != '\0') {
+        printf("Environment variable LV_LINUX_FBDEV_DEVICE is set: %s\n", device);
+    } else if (access("/dev/fb1", F_OK) == 0) {
+        device = "/dev/fb1";
+    } else if (access("/dev/fb0", F_OK) == 0) {
+        device = "/dev/fb0";
+    } else {
+        fprintf(stderr, "Error: No suitable framebuffer device found!\n");
+        exit(EXIT_FAILURE);
+    }
+    printf("Using framebuffer device: %s\n", device);
     lv_display_t *disp = lv_linux_fbdev_create();
-
     lv_linux_fbdev_set_file(disp, device);
 }
 
