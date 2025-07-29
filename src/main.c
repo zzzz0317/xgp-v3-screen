@@ -98,6 +98,22 @@ bool extract_env_value(const char *line, const char *key, char *value, size_t va
         strncpy(value, value_start, value_len);
         value[value_len] = '\0';
     }
+    else if (*value_start == '\'')
+    {
+        value_start++;
+        const char *value_end = strchr(value_start, '\'');
+        if (value_end == NULL)
+        {
+            return false;
+        }
+        size_t value_len = value_end - value_start;
+        if (value_len >= value_size)
+        {
+            value_len = value_size - 1;
+        }
+        strncpy(value, value_start, value_len);
+        value[value_len] = '\0';
+    }
     else
     {
         size_t value_len = strlen(value_start);
@@ -115,7 +131,7 @@ bool extract_env_value(const char *line, const char *key, char *value, size_t va
 int read_os_release(char *pretty_name, size_t pretty_name_size,
                     char *build_id, size_t build_id_size)
 {
-    FILE *file = fopen("/etc/os-release", "r");
+    FILE *file = fopen("/etc/openwrt_release", "r");
     if (file == NULL)
     {
         return -1;
@@ -131,13 +147,13 @@ int read_os_release(char *pretty_name, size_t pretty_name_size,
 
         if (!found_pretty_name)
         {
-            found_pretty_name = extract_env_value(line, "PRETTY_NAME",
+            found_pretty_name = extract_env_value(line, "DISTRIB_DESCRIPTION",
                                                   pretty_name, pretty_name_size);
         }
 
         if (!found_build_id)
         {
-            found_build_id = extract_env_value(line, "BUILD_ID",
+            found_build_id = extract_env_value(line, "DISTRIB_REVISION",
                                                build_id, build_id_size);
         }
 
