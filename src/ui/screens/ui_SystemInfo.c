@@ -91,7 +91,7 @@ void ui_SystemInfo_screen_init(void)
     lv_obj_set_x(ui_txtSysVersion, -100);
     lv_obj_set_y(ui_txtSysVersion, 0);
     lv_obj_set_align(ui_txtSysVersion, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtSysVersion, "系统版本: ");
+    lv_label_set_text(ui_txtSysVersion, "系统名称: ");
     lv_obj_set_style_text_align(ui_txtSysVersion, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtSysVersion, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -110,7 +110,7 @@ void ui_SystemInfo_screen_init(void)
     lv_obj_set_x(ui_txtBuildId, -100);
     lv_obj_set_y(ui_txtBuildId, 30);
     lv_obj_set_align(ui_txtBuildId, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtBuildId, "编译版本: ");
+    lv_label_set_text(ui_txtBuildId, "系统版本: ");
     lv_obj_set_style_text_align(ui_txtBuildId, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtBuildId, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
