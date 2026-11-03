@@ -54,8 +54,12 @@ To display cellular modem information (Modem Info & Signal screens), you **must 
   
   *(Note: It also supports [QModem](https://github.com/FUjr/QModem) as a secondary fallback).*
 
-### 2. Kernel & Display Drivers
-* Framebuffer driver for the LCD: `kmod-fb-tft-gc9307` (`/dev/fb0` or `/dev/fb1`)
+### 2. LCD Display Driver (Required)
+* **[kmod-fb-tft-gc9307](https://github.com/zzzz0317/kmod-fb-tft-gc9307)**:
+  
+  Linux kernel framebuffer driver module for the GC9307 TFT LCD screen used on the XiGuaPi V3 board (provides `/dev/fb0` or `/dev/fb1`).
+
+### 3. System Dependencies
 * `python3`
 * `libpthread`
 * `libstdcpp`
@@ -75,28 +79,35 @@ The application includes an extensive database (`isp_list.py`) mapping PLMN code
 
 ### Building with OpenWrt SDK
 
-1. Clone this repository into your OpenWrt build environment's `package` directory:
+1. Clone this repository and the LCD driver package into your OpenWrt build environment's `package` directory:
    ```bash
    cd openwrt
+   git clone https://github.com/zzzz0317/kmod-fb-tft-gc9307.git package/kmod-fb-tft-gc9307
    git clone https://github.com/ikhsanh/xgp-v3-screen.git package/xgp-v3-screen
    ```
 
-2. Select the package in `menuconfig`:
+2. Select the packages in `menuconfig`:
    ```bash
    make menuconfig
+   # Kernel modules --->
+   #   Video Support --->
+   #     <*> kmod-fb-tft-gc9307
    # Utilities --->
    #   <*> xgp-v3-screen
    ```
 
-3. Compile the package:
+3. Compile the packages:
    ```bash
+   make package/kmod-fb-tft-gc9307/compile V=s
    make package/xgp-v3-screen/compile V=s
    ```
 
 ### Installing on the Device
 
-Copy the compiled `.ipk` package to your router and install:
+Copy the compiled `.ipk` packages to your router and install:
 ```bash
+# Install kernel driver and screen UI
+opkg install kmod-fb-tft-gc9307_*.ipk
 opkg install xgp-v3-screen_*.ipk
 ```
 
