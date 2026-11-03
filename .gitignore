@@ -1,3 +1,6 @@
 src/build
 src/lvgl
 src/bin
+.vscode/
+__pycache__/
+*.pyc

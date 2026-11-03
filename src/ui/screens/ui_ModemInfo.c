@@ -53,7 +53,7 @@ void ui_ModemInfo_screen_init(void)
     lv_obj_set_width(ui_txtModemInfo, lv_pct(100));
     lv_obj_set_height(ui_txtModemInfo, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_txtModemInfo, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtModemInfo, "调制解调器信息");
+    lv_label_set_text(ui_txtModemInfo, "Modem Info");
     ui_object_set_themeable_style_property(ui_txtModemInfo, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_COLOR,
                                            _ui_theme_color_default);
     ui_object_set_themeable_style_property(ui_txtModemInfo, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_OPA,
@@ -99,7 +99,7 @@ void ui_ModemInfo_screen_init(void)
     lv_obj_set_x(ui_txtModemTempature, -120);
     lv_obj_set_y(ui_txtModemTempature, 0);
     lv_obj_set_align(ui_txtModemTempature, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtModemTempature, "温度: ");
+    lv_label_set_text(ui_txtModemTempature, "Temp: ");
     lv_obj_set_style_text_align(ui_txtModemTempature, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtModemTempature, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -119,7 +119,7 @@ void ui_ModemInfo_screen_init(void)
     lv_obj_set_x(ui_txtModemVoltage, 25);
     lv_obj_set_y(ui_txtModemVoltage, 0);
     lv_obj_set_align(ui_txtModemVoltage, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtModemVoltage, "电压: ");
+    lv_label_set_text(ui_txtModemVoltage, "Volt: ");
     lv_obj_set_style_text_align(ui_txtModemVoltage, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtModemVoltage, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -149,7 +149,7 @@ void ui_ModemInfo_screen_init(void)
     lv_obj_set_x(ui_valModemISP, -50);
     lv_obj_set_y(ui_valModemISP, 30);
     lv_obj_set_align(ui_valModemISP, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_valModemISP, "中国铁通");
+    lv_label_set_text(ui_valModemISP, "China Tietong");
     lv_obj_set_style_text_align(ui_valModemISP, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_valModemISP, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -159,7 +159,7 @@ void ui_ModemInfo_screen_init(void)
     lv_obj_set_x(ui_txtModemNetworkType, 25);
     lv_obj_set_y(ui_txtModemNetworkType, 30);
     lv_obj_set_align(ui_txtModemNetworkType, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtModemNetworkType, "类型: ");
+    lv_label_set_text(ui_txtModemNetworkType, "Type: ");
     lv_obj_set_style_text_align(ui_txtModemNetworkType, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtModemNetworkType, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -199,7 +199,7 @@ void ui_ModemInfo_screen_init(void)
     lv_obj_set_x(ui_txtModemAmbr, 25);
     lv_obj_set_y(ui_txtModemAmbr, 60);
     lv_obj_set_align(ui_txtModemAmbr, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtModemAmbr, "协商: ");
+    lv_label_set_text(ui_txtModemAmbr, "AMBR: ");
     lv_obj_set_style_text_align(ui_txtModemAmbr, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtModemAmbr, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 

@@ -18,8 +18,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-#define UNKNOWN_VALUE_REPLACE_STRING "未知"
-#define UNKNOWN_IP_REPLACE_STRING "无IP地址或接口不存在"
+#define UNKNOWN_VALUE_REPLACE_STRING "Unknown"
+#define UNKNOWN_IP_REPLACE_STRING "No IP Address"
 #define DEFAULT_VALUE_SIZE 64
 #define MAX_ENV_LINE_LENGTH 128
 
@@ -241,7 +241,7 @@ int get_interface_ipv4_address(const char *iface_name, char *ip_addr, size_t ip_
     if (ioctl(sockfd, SIOCGIFADDR, &ifr) == -1)
     {
         close(sockfd);
-        return -1; // 接口不存在或没有IP地址
+        return -1; // Interface does not exist or has no IP address
     }
 
     sin = (struct sockaddr_in *)&ifr.ifr_addr;
@@ -272,19 +272,19 @@ int get_first_wwan_ipv4_address(char *ip_addr, size_t ip_addr_len)
 
     for (if_entry = if_ni; if_entry->if_index != 0; if_entry++)
     {
-        // 检查是否是wwan接口 (wwan0, wwan1, wwan2等) 或 rmnet_mhi 接口
+        // Check if wwan interface (wwan0, wwan1, wwan2, etc.) or rmnet_mhi interface
         if (strncmp(if_entry->if_name, "wwan", 4) == 0 || strncmp(if_entry->if_name, "rmnet_mhi", 9) == 0)
         {
             if (get_interface_ipv4_address(if_entry->if_name, ip_addr, ip_addr_len) == 0)
             {
                 if_freenameindex(if_ni);
-                return 0; // 成功找到接口并获取IP
+                return 0; // Successfully found interface and obtained IP
             }
         }
     }
 
     if_freenameindex(if_ni);
-    return -1; // 没有找到有IP的接口
+    return -1; // No interface with IP found
 }
 
 int get_nf_conntrack_count()
@@ -698,7 +698,7 @@ static void update_screen_data(void)
             uptime %= 3600;
             int minutes = uptime / 60;
             int seconds = uptime % 60;
-            snprintf(buf_uptime, DEFAULT_VALUE_SIZE, "%d 天 %d 小时 %d 分 %d 秒",
+            snprintf(buf_uptime, DEFAULT_VALUE_SIZE, "%d d %d h %d m %d s",
                      days, hours, minutes, seconds);
             lv_label_set_text(ui_valUptime, buf_uptime);
         }

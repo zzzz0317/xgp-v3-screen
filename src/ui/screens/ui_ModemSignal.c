@@ -47,7 +47,7 @@ void ui_ModemSignal_screen_init(void)
     lv_obj_set_width(ui_txtModemSignal, lv_pct(100));
     lv_obj_set_height(ui_txtModemSignal, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_txtModemSignal, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtModemSignal, "调制解调器信号");
+    lv_label_set_text(ui_txtModemSignal, "Modem Signal");
     ui_object_set_themeable_style_property(ui_txtModemSignal, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_COLOR,
                                            _ui_theme_color_default);
     ui_object_set_themeable_style_property(ui_txtModemSignal, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_OPA,
