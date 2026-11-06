@@ -27,6 +27,51 @@
 #define MAX_IFACE_NAME_LEN 16
 #define MAX_IP_ADDR_LEN 16
 
+static uint32_t update_screen_data_time_counter = 0;
+static uint32_t update_modem_data_time_counter = 10;
+
+static long memory_total_bytes = 0;
+static char buf_memory_total_bytes[DEFAULT_VALUE_SIZE];
+
+static char buf_hostname[DEFAULT_VALUE_SIZE];
+static char buf_sys_version[DEFAULT_VALUE_SIZE];
+static char buf_build_id[DEFAULT_VALUE_SIZE];
+static char buf_kernel_version[DEFAULT_VALUE_SIZE];
+static char buf_load_avg[DEFAULT_VALUE_SIZE];
+static char buf_memory[DEFAULT_VALUE_SIZE];
+static char buf_uptime[DEFAULT_VALUE_SIZE];
+static char buf_local_time[DEFAULT_VALUE_SIZE];
+static char buf_modem_ip[DEFAULT_VALUE_SIZE];
+static char buf_wan_ip[DEFAULT_VALUE_SIZE];
+static char buf_lan_ip[DEFAULT_VALUE_SIZE];
+static char buf_active_connect[DEFAULT_VALUE_SIZE];
+static char buf_arp_count[DEFAULT_VALUE_SIZE];
+
+static char buf_modem_revision[DEFAULT_VALUE_SIZE];
+static char buf_modem_temperature[DEFAULT_VALUE_SIZE];
+static char buf_modem_voltage[DEFAULT_VALUE_SIZE];
+static char buf_modem_connect[DEFAULT_VALUE_SIZE];
+static char buf_modem_sim[DEFAULT_VALUE_SIZE];
+static char buf_modem_isp[DEFAULT_VALUE_SIZE];
+static char buf_modem_cqi[DEFAULT_VALUE_SIZE];
+static char buf_modem_ambr[DEFAULT_VALUE_SIZE];
+static char buf_modem_networkmode[DEFAULT_VALUE_SIZE];
+static char buf_modem_signal0name[DEFAULT_VALUE_SIZE];
+static int buf_modem_signal0value = 0;
+static int buf_modem_signal0min = 0;
+static int buf_modem_signal0max = 0;
+static char buf_modem_signal0unit[DEFAULT_VALUE_SIZE];
+static char buf_modem_signal1name[DEFAULT_VALUE_SIZE];
+static int buf_modem_signal1value = 0;
+static int buf_modem_signal1min = 0;
+static int buf_modem_signal1max = 0;
+static char buf_modem_signal1unit[DEFAULT_VALUE_SIZE];
+static char buf_modem_signal2name[DEFAULT_VALUE_SIZE];
+static int buf_modem_signal2value = 0;
+static int buf_modem_signal2min = 0;
+static int buf_modem_signal2max = 0;
+static char buf_modem_signal2unit[DEFAULT_VALUE_SIZE];
+
 static const char *getenv_default(const char *name, const char *dflt)
 {
     return getenv(name) ?: dflt;
@@ -432,50 +477,6 @@ int count_arp_online()
     return count;
 }
 
-static uint32_t update_screen_data_time_counter = 0;
-static uint32_t update_modem_data_time_counter = 10;
-
-static long memory_total_bytes = 0;
-static char buf_memory_total_bytes[DEFAULT_VALUE_SIZE];
-
-static char buf_hostname[DEFAULT_VALUE_SIZE];
-static char buf_sys_version[DEFAULT_VALUE_SIZE];
-static char buf_build_id[DEFAULT_VALUE_SIZE];
-static char buf_kernel_version[DEFAULT_VALUE_SIZE];
-static char buf_load_avg[DEFAULT_VALUE_SIZE];
-static char buf_memory[DEFAULT_VALUE_SIZE];
-static char buf_uptime[DEFAULT_VALUE_SIZE];
-static char buf_local_time[DEFAULT_VALUE_SIZE];
-static char buf_modem_ip[DEFAULT_VALUE_SIZE];
-static char buf_wan_ip[DEFAULT_VALUE_SIZE];
-static char buf_lan_ip[DEFAULT_VALUE_SIZE];
-static char buf_active_connect[DEFAULT_VALUE_SIZE];
-static char buf_arp_count[DEFAULT_VALUE_SIZE];
-
-static char buf_modem_revision[DEFAULT_VALUE_SIZE];
-static char buf_modem_temperature[DEFAULT_VALUE_SIZE];
-static char buf_modem_voltage[DEFAULT_VALUE_SIZE];
-static char buf_modem_connect[DEFAULT_VALUE_SIZE];
-static char buf_modem_sim[DEFAULT_VALUE_SIZE];
-static char buf_modem_isp[DEFAULT_VALUE_SIZE];
-static char buf_modem_cqi[DEFAULT_VALUE_SIZE];
-static char buf_modem_ambr[DEFAULT_VALUE_SIZE];
-static char buf_modem_networkmode[DEFAULT_VALUE_SIZE];
-static char buf_modem_signal0name[DEFAULT_VALUE_SIZE];
-static int buf_modem_signal0value = 0;
-static int buf_modem_signal0min = 0;
-static int buf_modem_signal0max = 0;
-static char buf_modem_signal0unit[DEFAULT_VALUE_SIZE];
-static char buf_modem_signal1name[DEFAULT_VALUE_SIZE];
-static int buf_modem_signal1value = 0;
-static int buf_modem_signal1min = 0;
-static int buf_modem_signal1max = 0;
-static char buf_modem_signal1unit[DEFAULT_VALUE_SIZE];
-static char buf_modem_signal2name[DEFAULT_VALUE_SIZE];
-static int buf_modem_signal2value = 0;
-static int buf_modem_signal2min = 0;
-static int buf_modem_signal2max = 0;
-static char buf_modem_signal2unit[DEFAULT_VALUE_SIZE];
 
 void parse_modem_info()
 {
