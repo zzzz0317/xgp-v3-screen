@@ -141,6 +141,16 @@ The screen service runs automatically via `procd`:
 
 ---
 
+## Credits & Upstream Source
+
+This project is based on the original source code by **[zzzz0317/xgp-v3-screen](https://github.com/zzzz0317/xgp-v3-screen)**.
+
+Special thanks to:
+* **[zzzz0317](https://github.com/zzzz0317)** for the original `xgp-v3-screen` project and `kmod-fb-tft-gc9307` display driver.
+* **[fildunsky/luci-app-5gmodem](https://github.com/fildunsky/luci-app-5gmodem)** for the cellular modem telemetry provider.
+
+---
+
 ## License
 
 This project is licensed under the **GPL-3.0** License.
