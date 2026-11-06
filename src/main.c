@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/utsname.h>
 #include <sys/sysinfo.h>
+#include <stdbool.h>
 
 #include <sys/ioctl.h>
 #include <net/if.h>
@@ -247,7 +248,7 @@ int get_interface_ipv4_address(const char *iface_name, char *ip_addr, size_t ip_
     sin = (struct sockaddr_in *)&ifr.ifr_addr;
     const char *ip = inet_ntoa(sin->sin_addr);
 
-    if (ip != NULL)
+    if (ip != NULL && strcmp(ip, "0.0.0.0") != 0 && strncmp(ip, "127.", 4) != 0)
     {
         strncpy(ip_addr, ip, ip_addr_len - 1);
         ip_addr[ip_addr_len - 1] = '\0';
@@ -259,32 +260,114 @@ int get_interface_ipv4_address(const char *iface_name, char *ip_addr, size_t ip_
     return -1;
 }
 
+static bool is_cellular_modem_iface(const char *name)
+{
+    if (name == NULL) return false;
+
+    // Standard cellular interfaces
+    if (strncmp(name, "wwan", 4) == 0) return true;
+    if (strncmp(name, "rmnet", 5) == 0) return true;
+    if (strncmp(name, "usb", 3) == 0) return true;
+    if (strncmp(name, "modem", 5) == 0) return true;
+
+    // OpenWrt netifd virtual protocol interfaces
+    if (strncmp(name, "3g-", 3) == 0) return true;
+    if (strncmp(name, "qmi-", 4) == 0) return true;
+    if (strncmp(name, "mbim-", 5) == 0) return true;
+    if (strncmp(name, "ncm-", 4) == 0) return true;
+
+    // Cellular modems mapped to eth2, eth3, eth4 (e.g. PCIe / CDC-ECM)
+    if (strcmp(name, "eth2") == 0 || strcmp(name, "eth3") == 0 || strcmp(name, "eth4") == 0) return true;
+
+    return false;
+}
+
+static int get_ubus_interface_ipv4(const char *ifname, char *ip_addr, size_t ip_addr_len)
+{
+    char cmd[128];
+    snprintf(cmd, sizeof(cmd), "ubus call network.interface.%s status 2>/dev/null", ifname);
+    FILE *fp = popen(cmd, "r");
+    if (!fp) return -1;
+
+    char buffer[1024];
+    size_t bytes = fread(buffer, 1, sizeof(buffer) - 1, fp);
+    pclose(fp);
+    if (bytes <= 0) return -1;
+    buffer[bytes] = '\0';
+
+    char *addr_ptr = strstr(buffer, "\"address\":");
+    if (!addr_ptr) addr_ptr = strstr(buffer, "\"address\" :");
+    if (addr_ptr)
+    {
+        char *quote1 = strchr(addr_ptr + 9, '\"');
+        if (quote1)
+        {
+            char *quote2 = strchr(quote1 + 1, '\"');
+            if (quote2)
+            {
+                size_t len = quote2 - (quote1 + 1);
+                if (len >= 7 && len < ip_addr_len)
+                {
+                    strncpy(ip_addr, quote1 + 1, len);
+                    ip_addr[len] = '\0';
+                    if (strcmp(ip_addr, "0.0.0.0") != 0 && strncmp(ip_addr, "127.", 4) != 0)
+                    {
+                        return 0;
+                    }
+                }
+            }
+        }
+    }
+    return -1;
+}
+
 int get_first_wwan_ipv4_address(char *ip_addr, size_t ip_addr_len)
 {
     struct if_nameindex *if_ni, *if_entry;
 
     if_ni = if_nameindex();
-    if (if_ni == NULL)
+    if (if_ni != NULL)
     {
-        perror("if_nameindex");
-        return -1;
+        for (if_entry = if_ni; if_entry->if_index != 0; if_entry++)
+        {
+            if (is_cellular_modem_iface(if_entry->if_name))
+            {
+                if (get_interface_ipv4_address(if_entry->if_name, ip_addr, ip_addr_len) == 0)
+                {
+                    if_freenameindex(if_ni);
+                    return 0;
+                }
+            }
+        }
+        if_freenameindex(if_ni);
     }
 
-    for (if_entry = if_ni; if_entry->if_index != 0; if_entry++)
+    // Try OpenWrt ubus network interfaces
+    const char *ubus_ifaces[] = {"modem", "wwan", "cellular", "lte", "wan_4g", "wan_5g", NULL};
+    for (int i = 0; ubus_ifaces[i] != NULL; i++)
     {
-        // Check if wwan interface (wwan0, wwan1, wwan2, etc.) or rmnet_mhi interface
-        if (strncmp(if_entry->if_name, "wwan", 4) == 0 || strncmp(if_entry->if_name, "rmnet_mhi", 9) == 0)
+        if (get_ubus_interface_ipv4(ubus_ifaces[i], ip_addr, ip_addr_len) == 0)
         {
-            if (get_interface_ipv4_address(if_entry->if_name, ip_addr, ip_addr_len) == 0)
-            {
-                if_freenameindex(if_ni);
-                return 0; // Successfully found interface and obtained IP
-            }
+            return 0;
         }
     }
 
-    if_freenameindex(if_ni);
-    return -1; // No interface with IP found
+    // Fallback: if buf_modem_ip already has a valid IP (e.g. from modem_info.py)
+    if (strlen(buf_modem_ip) >= 7 &&
+        strcmp(buf_modem_ip, UNKNOWN_IP_REPLACE_STRING) != 0 &&
+        strcmp(buf_modem_ip, UNKNOWN_VALUE_REPLACE_STRING) != 0 &&
+        strcmp(buf_modem_ip, "-") != 0 &&
+        strcmp(buf_modem_ip, "0.0.0.0") != 0)
+    {
+        if (ip_addr != buf_modem_ip)
+        {
+            strncpy(ip_addr, buf_modem_ip, ip_addr_len - 1);
+            ip_addr[ip_addr_len - 1] = '\0';
+        }
+        return 0;
+    }
+
+    return -1;
 }
 
 int get_nf_conntrack_count()
@@ -427,16 +510,29 @@ void parse_modem_info()
     {
         while (fgets(line, sizeof(line), fp) != NULL)
         {
-            line[strcspn(line, "\n")] = 0;
-            char *key = strtok(line, ":");
-            char *value = strtok(NULL, ":");
-            if (key == NULL || value == NULL)
+            line[strcspn(line, "\r\n")] = 0;
+            char *colon = strchr(line, ':');
+            if (colon == NULL)
             {
                 continue;
             }
+            *colon = '\0';
+            char *key = line;
+            char *value = colon + 1;
             if (strcmp(key, "revision") == 0)
             {
                 strncpy(buf_modem_revision, value, DEFAULT_VALUE_SIZE - 1);
+            }
+            else if (strcmp(key, "modemip") == 0 || strcmp(key, "ip") == 0)
+            {
+                if (value != NULL && strlen(value) >= 7 &&
+                    strcmp(value, "-") != 0 &&
+                    strcmp(value, "unknown") != 0 &&
+                    strcmp(value, "0.0.0.0") != 0)
+                {
+                    strncpy(buf_modem_ip, value, DEFAULT_VALUE_SIZE - 1);
+                    buf_modem_ip[DEFAULT_VALUE_SIZE - 1] = '\0';
+                }
             }
             else if (strcmp(key, "temperature") == 0)
             {
@@ -600,6 +696,13 @@ void parse_modem_info()
     {
         lv_bar_set_range(ui_valModemSignalBar3, buf_modem_signal2min, buf_modem_signal2max);
         lv_bar_set_value(ui_valModemSignalBar3, buf_modem_signal2value, LV_ANIM_OFF);
+    }
+    if (ui_valModemIp != NULL && strlen(buf_modem_ip) >= 7 &&
+        strcmp(buf_modem_ip, UNKNOWN_IP_REPLACE_STRING) != 0 &&
+        strcmp(buf_modem_ip, UNKNOWN_VALUE_REPLACE_STRING) != 0 &&
+        strcmp(buf_modem_ip, "-") != 0)
+    {
+        lv_label_set_text(ui_valModemIp, buf_modem_ip);
     }
 }
 
@@ -771,6 +874,8 @@ int main(void)
     ui_init();
     /*Handle LVGL tasks*/
     update_static_value();
+    parse_modem_info();
+    update_screen_data();
     while (1)
     {
         lv_timer_handler();

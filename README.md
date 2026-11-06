@@ -23,7 +23,7 @@ The interface automatically cycles through 5 informative screens:
    - Local Time & Date
 
 3. **Network Info (3/5)**:
-   - Modem IP address (`wwan` / `rmnet_mhi` interfaces)
+   - Modem IP address (supports `wwan`, `rmnet`, `usb`, `qmi`, `mbim`, `modem`, `eth2-4`, and OpenWrt `ubus`)
    - WAN IP address
    - LAN IP address
    - Active network connections count (`nf_conntrack`)
@@ -59,7 +59,16 @@ To display cellular modem information (Modem Info & Signal screens), you **must 
   
   Linux kernel framebuffer driver module for the GC9307 TFT LCD screen used on the XiGuaPi V3 board (provides `/dev/fb0` or `/dev/fb1`).
 
-### 3. System Dependencies
+### 3. Screen Management Web UI (Recommended)
+* **[luci-app-xgp-v3-screen](https://github.com/ikhsanh/luci-app-xgp-v3-screen)**:
+  
+  Companion OpenWrt LuCI web application providing:
+  - Screen power toggle (Enable / Disable switch)
+  - Backlight brightness slider (0 - 255)
+  - Display Interval cycling (e.g. 10 minutes ON, 10 minutes OFF loop)
+  - Time schedule / autoswitch (e.g. ON only between 20:00 - 23:00)
+
+### 4. System Dependencies
 * `python3`
 * `libpthread`
 * `libstdcpp`

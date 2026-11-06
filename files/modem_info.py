@@ -35,6 +35,76 @@ def parse_float_safe(val, default=None):
         return float(match.group(0))
     return default
 
+def extract_ip_safe(val):
+    if not val:
+        return None
+    if isinstance(val, list) and len(val) > 0:
+        val = val[0]
+    if isinstance(val, dict):
+        val = val.get('ip') or val.get('address') or val.get('addr') or ''
+    val = str(val).strip()
+    match = re.search(r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b', val)
+    if match:
+        ip = match.group(0)
+        if ip != '0.0.0.0' and not ip.startswith('127.'):
+            return ip
+    return None
+
+def get_system_modem_ip():
+    # 1. Check ubus interface status for common modem interfaces
+    for iface in ['modem', 'wwan', 'wan_4g', 'wan_5g', 'cellular', 'lte', 'mobile']:
+        try:
+            res = subprocess.run(['ubus', 'call', f'network.interface.{iface}', 'status'],
+                                 capture_output=True, text=True, timeout=1)
+            if res.returncode == 0:
+                d = json.loads(res.stdout)
+                for addr in d.get('ipv4-address', []):
+                    ip = extract_ip_safe(addr)
+                    if ip:
+                        return ip
+        except Exception:
+            pass
+
+    # 2. Check ubus network.interface dump
+    try:
+        res = subprocess.run(['ubus', 'call', 'network.interface', 'dump'],
+                             capture_output=True, text=True, timeout=1)
+        if res.returncode == 0:
+            d = json.loads(res.stdout)
+            for iface in d.get('interface', []):
+                name = str(iface.get('interface', '')).lower()
+                l3dev = str(iface.get('l3_device', '')).lower()
+                dev = str(iface.get('device', '')).lower()
+                proto = str(iface.get('proto', '')).lower()
+                if any(k in name or k in l3dev or k in dev or k in proto for k in ['modem', 'wwan', 'rmnet', 'usb', 'lte', 'qmi', 'mbim', 'ncm', 'fibocom']):
+                    for addr in iface.get('ipv4-address', []):
+                        ip = extract_ip_safe(addr)
+                        if ip:
+                            return ip
+    except Exception:
+        pass
+
+    # 3. Check standard Linux network addresses via ip command
+    try:
+        res = subprocess.run(['ip', '-4', 'addr', 'show'], capture_output=True, text=True, timeout=1)
+        if res.returncode == 0:
+            current_iface = ''
+            for line in res.stdout.splitlines():
+                line = line.strip()
+                if line and line[0].isdigit():
+                    parts = line.split(':')
+                    if len(parts) >= 2:
+                        current_iface = parts[1].strip()
+                elif line.startswith('inet '):
+                    if any(current_iface.startswith(p) for p in ['wwan', 'rmnet', 'usb', '3g-', 'qmi-', 'mbim-', 'ncm-', 'modem', 'eth2', 'eth3', 'eth4']):
+                        ip = extract_ip_safe(line)
+                        if ip:
+                            return ip
+    except Exception:
+        pass
+
+    return None
+
 def parse_5gmodem_data(data):
     if not isinstance(data, dict) or not data:
         return None
@@ -160,6 +230,12 @@ def parse_5gmodem_data(data):
     else:
         signals.append(("-", 0, 0, 0, "-"))
 
+    # Modem IP
+    raw_ip = get_any('ip', 'modem_ip', 'wan_ip', 'ip_address', 'ipv4', 'local_ip', 'net_ip', 'client_ip', 'pdp_ip', 'address')
+    modem_ip = extract_ip_safe(raw_ip)
+    if not modem_ip:
+        modem_ip = get_system_modem_ip()
+
     result_txt = [
         f"revision:{revision}",
         f"temperature:{temperature}",
@@ -171,6 +247,8 @@ def parse_5gmodem_data(data):
         f"ambr:{ambr}",
         f"networkmode:{network_mode}",
     ]
+    if modem_ip:
+        result_txt.append(f"modemip:{modem_ip}")
     for i, (name, val, min_v, max_v, unit) in enumerate(signals[:3]):
         result_txt.append(f"signal{i}name:{name}")
         result_txt.append(f"signal{i}value:{val}")
@@ -215,7 +293,8 @@ def get_qmodem_info():
     target_keys = {
         'revision', 'temperature', 'voltage', 'connect_status',
         'SIM Status', 'sim_status', 'ISP', 'CQI UL', 'CQI DL', 'AMBR UL', 'AMBR DL', 'network_mode',
-        "MMC", "MCC", "MNC"
+        "MMC", "MCC", "MNC",
+        "IP", "ip", "modem_ip", "ip_address", "IPv4", "ipv4", "WAN IP", "Modem IP"
     }
 
     result = {}
@@ -286,6 +365,22 @@ def get_qmodem_info():
     result_txt.append(f"ambr:{result['AMBR']}")
     result_txt.append(f"networkmode:{result.get('network_mode', default_unknown_value_relative_to_sim_status)}")
 
+    raw_ip = (
+        result.get('IP') or
+        result.get('ip') or
+        result.get('modem_ip') or
+        result.get('ip_address') or
+        result.get('IPv4') or
+        result.get('ipv4') or
+        result.get('Modem IP') or
+        result.get('WAN IP')
+    )
+    modem_ip = extract_ip_safe(raw_ip)
+    if not modem_ip:
+        modem_ip = get_system_modem_ip()
+    if modem_ip:
+        result_txt.append(f"modemip:{modem_ip}")
+
     result_progress_keys = list(result_progress.keys())
 
     for i in range(3):
@@ -308,12 +403,15 @@ def get_qmodem_info():
 def get_modem_info():
     # 1. Try luci-app-5gmodem (reads tele.json / status file from /tmp)
     info = get_5gmodem_info()
-    if info:
-        return info
+    if not info:
+        # 2. Try QModem (rpcd modem_ctrl call info)
+        info = get_qmodem_info()
 
-    # 2. Try QModem (rpcd modem_ctrl call info)
-    info = get_qmodem_info()
     if info:
+        if "modemip:" not in info:
+            sys_ip = get_system_modem_ip()
+            if sys_ip:
+                info += f"\nmodemip:{sys_ip}"
         return info
 
     return None
