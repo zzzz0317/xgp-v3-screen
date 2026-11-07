@@ -72,6 +72,20 @@ static int buf_modem_signal2min = 0;
 static int buf_modem_signal2max = 0;
 static char buf_modem_signal2unit[DEFAULT_VALUE_SIZE];
 
+static uint64_t last_lan_tx_bytes = 0;
+static uint64_t last_lan_rx_bytes = 0;
+static struct timespec last_speed_time = {0, 0};
+static double current_dl_mbps = 0.0;
+static double current_ul_mbps = 0.0;
+static double peak_dl_mbps = 0.0;
+static char buf_speed_dl[DEFAULT_VALUE_SIZE] = "0";
+static char buf_speed_ul[DEFAULT_VALUE_SIZE] = "0";
+static char buf_total_dl[DEFAULT_VALUE_SIZE] = "v 0.0M";
+static char buf_total_ul[DEFAULT_VALUE_SIZE] = "^ 0.0M";
+static char buf_speed_clients[DEFAULT_VALUE_SIZE] = "0 Online";
+static char buf_speed_peak[DEFAULT_VALUE_SIZE] = "0 M";
+static char buf_speed_conns[DEFAULT_VALUE_SIZE] = "Active: 0";
+
 static const char *getenv_default(const char *name, const char *dflt)
 {
     return getenv(name) ?: dflt;
@@ -724,6 +738,121 @@ static void update_static_value(void)
     format_memory_size(memory_total_bytes, buf_memory_total_bytes);
 }
 
+static int read_interface_bytes(const char *iface, uint64_t *rx_bytes, uint64_t *tx_bytes)
+{
+    char path[128];
+    FILE *fp;
+
+    snprintf(path, sizeof(path), "/sys/class/net/%s/statistics/rx_bytes", iface);
+    fp = fopen(path, "r");
+    if (!fp) return -1;
+    if (fscanf(fp, "%llu", (unsigned long long *)rx_bytes) != 1) {
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+
+    snprintf(path, sizeof(path), "/sys/class/net/%s/statistics/tx_bytes", iface);
+    fp = fopen(path, "r");
+    if (!fp) return -1;
+    if (fscanf(fp, "%llu", (unsigned long long *)tx_bytes) != 1) {
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+
+    return 0;
+}
+
+static void update_speed_meter_data(void)
+{
+    const char *iface = getenv_default("XGP_SPEED_IFACE", "br-lan");
+    uint64_t rx = 0, tx = 0;
+
+    if (read_interface_bytes(iface, &rx, &tx) != 0) {
+        return;
+    }
+
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+
+    if (last_speed_time.tv_sec != 0) {
+        double dt = (now.tv_sec - last_speed_time.tv_sec) + 
+                    (now.tv_nsec - last_speed_time.tv_nsec) / 1e9;
+        if (dt > 0.1) {
+            uint64_t delta_rx = (rx >= last_lan_rx_bytes) ? (rx - last_lan_rx_bytes) : 0;
+            uint64_t delta_tx = (tx >= last_lan_tx_bytes) ? (tx - last_lan_tx_bytes) : 0;
+
+            // On LAN bridge (br-lan):
+            // tx_bytes = transmitted to clients (Client Download)
+            // rx_bytes = received from clients (Client Upload)
+            double dl_bps = (delta_tx * 8.0) / dt;
+            double ul_bps = (delta_rx * 8.0) / dt;
+
+            current_dl_mbps = dl_bps / 1000000.0;
+            current_ul_mbps = ul_bps / 1000000.0;
+
+            if (current_dl_mbps > peak_dl_mbps) {
+                peak_dl_mbps = current_dl_mbps;
+            }
+
+            if (current_dl_mbps >= 100.0) {
+                snprintf(buf_speed_dl, sizeof(buf_speed_dl), "%.0f", current_dl_mbps);
+            } else if (current_dl_mbps >= 1.0) {
+                snprintf(buf_speed_dl, sizeof(buf_speed_dl), "%.1f", current_dl_mbps);
+            } else {
+                snprintf(buf_speed_dl, sizeof(buf_speed_dl), "%.1f", current_dl_mbps);
+            }
+
+            if (current_ul_mbps >= 100.0) {
+                snprintf(buf_speed_ul, sizeof(buf_speed_ul), "%.0f", current_ul_mbps);
+            } else if (current_ul_mbps >= 1.0) {
+                snprintf(buf_speed_ul, sizeof(buf_speed_ul), "%.1f", current_ul_mbps);
+            } else {
+                snprintf(buf_speed_ul, sizeof(buf_speed_ul), "%.1f", current_ul_mbps);
+            }
+
+            char tmp_mem[32];
+            format_memory_size((long)tx, tmp_mem);
+            snprintf(buf_total_dl, sizeof(buf_total_dl), "v %s", tmp_mem);
+            format_memory_size((long)rx, tmp_mem);
+            snprintf(buf_total_ul, sizeof(buf_total_ul), "^ %s", tmp_mem);
+
+            int online_devs = count_arp_online();
+            snprintf(buf_speed_clients, sizeof(buf_speed_clients), "%d Devs", online_devs >= 0 ? online_devs : 0);
+
+            if (peak_dl_mbps >= 100.0) {
+                snprintf(buf_speed_peak, sizeof(buf_speed_peak), "%.0f M", peak_dl_mbps);
+            } else {
+                snprintf(buf_speed_peak, sizeof(buf_speed_peak), "%.1f M", peak_dl_mbps);
+            }
+
+            int conns = get_nf_conntrack_count();
+            snprintf(buf_speed_conns, sizeof(buf_speed_conns), "Active: %d", conns >= 0 ? conns : 0);
+
+            if (ui_valSpeedDownload != NULL) lv_label_set_text(ui_valSpeedDownload, buf_speed_dl);
+            if (ui_valSpeedUpload != NULL) lv_label_set_text(ui_valSpeedUpload, buf_speed_ul);
+            if (ui_valTotalDl != NULL) lv_label_set_text(ui_valTotalDl, buf_total_dl);
+            if (ui_valTotalUl != NULL) lv_label_set_text(ui_valTotalUl, buf_total_ul);
+            if (ui_valSpeedClients != NULL) lv_label_set_text(ui_valSpeedClients, buf_speed_clients);
+            if (ui_valSpeedPeak != NULL) lv_label_set_text(ui_valSpeedPeak, buf_speed_peak);
+            if (ui_lblSpeedConns != NULL) lv_label_set_text(ui_lblSpeedConns, buf_speed_conns);
+
+            int bar_dl_val = (int)((current_dl_mbps / 200.0) * 100.0);
+            int bar_ul_val = (int)((current_ul_mbps / 200.0) * 100.0);
+            if (bar_dl_val > 100) bar_dl_val = 100;
+            if (bar_ul_val > 100) bar_ul_val = 100;
+
+            if (ui_barSpeedDownload != NULL) lv_bar_set_value(ui_barSpeedDownload, bar_dl_val, LV_ANIM_OFF);
+            if (ui_barSpeedUpload != NULL) lv_bar_set_value(ui_barSpeedUpload, bar_ul_val, LV_ANIM_OFF);
+        }
+    }
+
+    last_lan_rx_bytes = rx;
+    last_lan_tx_bytes = tx;
+    last_speed_time = now;
+}
+
 static void update_screen_data(void)
 {
     if (ui_valHostname != NULL)
@@ -863,6 +992,7 @@ static void update_screen_data(void)
         snprintf(buf_arp_count, DEFAULT_VALUE_SIZE, "%d", count_arp_online());
         lv_label_set_text(ui_valArpCount, buf_arp_count);
     }
+    update_speed_meter_data();
 }
 
 int main(void)

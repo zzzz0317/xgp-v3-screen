@@ -22,7 +22,7 @@ void ui_event_Splash(lv_event_t * e)
         fadeinfromright_Animation(ui_Prodcut_Name, 0);
     }
     if(event_code == LV_EVENT_SCREEN_LOADED) {
-        _ui_screen_change(&ui_SystemInfo, LV_SCR_LOAD_ANIM_FADE_ON, 500, 5000, &ui_SystemInfo_screen_init);
+        _ui_screen_change(&ui_SpeedMeter, LV_SCR_LOAD_ANIM_FADE_ON, 500, 3000, &ui_SpeedMeter_screen_init);
     }
 }
 

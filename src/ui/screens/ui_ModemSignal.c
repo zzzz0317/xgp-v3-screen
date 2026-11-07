@@ -24,7 +24,7 @@ void ui_event_ModemSignal(lv_event_t * e)
     lv_event_code_t event_code = lv_event_get_code(e);
 
     if(event_code == LV_EVENT_SCREEN_LOADED) {
-        _ui_screen_change(&ui_SystemInfo, LV_SCR_LOAD_ANIM_MOVE_TOP, 200, 5000, &ui_SystemInfo_screen_init);
+        _ui_screen_change(&ui_SpeedMeter, LV_SCR_LOAD_ANIM_MOVE_TOP, 200, 5000, &ui_SpeedMeter_screen_init);
     }
 }
 

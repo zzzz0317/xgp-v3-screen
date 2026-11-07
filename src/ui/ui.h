@@ -25,6 +25,7 @@ extern "C" {
 #include "screens/ui_SystemInfo.h"
 #include "screens/ui_SystemStatus.h"
 #include "screens/ui_NetworkInfo.h"
+#include "screens/ui_SpeedMeter.h"
 #include "screens/ui_ModemInfo.h"
 #include "screens/ui_ModemSignal.h"
 

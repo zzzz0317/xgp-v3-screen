@@ -2,13 +2,59 @@
 
 OpenWrt TFT LCD Screen UI for **NLnet XiGuaPi Board V3**, powered by [LVGL 9](https://lvgl.io/) and Python telemetry.
 
-This project displays system metrics, network details, and cellular modem status on the built-in 320x172 TFT LCD screen of the XiGuaPi V3 device.
+This project displays system metrics, network details, internet speed throughput, and cellular modem status on the built-in 320x172 TFT LCD screen of the XiGuaPi V3 device.
 
 ---
 
-## Screen Displays & Features
+## Screen Displays & Looping Flow (Primary Standby Mode)
 
-The interface automatically cycles through 5 informative screens:
+The interface operates in a continuous automated carousel loop designed around real-time internet throughput monitoring:
+
+```
+[System Power On]
+       │
+       ▼
+[Boot & Splash Screen] (~3 seconds, XiGuaPi Branding)
+       │
+       ▼
+┌────────────────────────────────────────────────────────┐
+│  1. SPEED METER SCREEN (UBIQUITI AMPLIFI HD STYLE)     │
+│     PRIMARY STANDBY DURATION: 3 MINUTES (180 SECONDS)  │
+│     • Download Bar (Cyan) & Upload Bar (Purple)        │
+│     • Real-Time Throughput with Direction Arrows (↓/↑) │
+│     • Session Bandwidth Odometer (MB / GB)             │
+│     • Online ARP Clients & Peak Download Speed (Mbps)  │
+└────────────────────────────────────────────────────────┘
+       │
+       ▼ (After 3 minutes)
+┌────────────────────────────────────────────────────────┐
+│  2. DEFAULT STATUS CAROUSEL (5 SECONDS PER SCREEN)     │
+│     • (1/5) System Info       (5 seconds)              │
+│     • (2/5) System Status     (5 seconds)              │
+│     • (3/5) Network Info      (5 seconds)              │
+│     • (4/5) Modem Info        (5 seconds)              │
+│     • (5/5) Modem Signal      (5 seconds)              │
+└────────────────────────────────────────────────────────┘
+       │
+       └────────► LOOPS BACK TO SPEED METER (3 MINUTES)
+                  (Repeats continuously)
+```
+
+### 1. Speed Meter Screen (AmpliFi HD Style — 3 Minutes Per Cycle)
+Inspired by the Ubiquiti AmpliFi HD Mesh Home Router (AFi-R) and adapted for the 320x172 landscape TFT LCD:
+* **Real-Time Download Speed**: Large bold cyan digits and a glowing cyan horizontal meter bar at the top.
+* **Real-Time Upload Speed**: Large bold purple digits and a glowing royal purple horizontal meter bar at the bottom.
+* **Direction Indicator Arrows**: Downward arrow (↓) for download and upward arrow (↑) for upload.
+* **Session Bandwidth Odometer**: Accumulated download and upload data transferred during the session (formatted in MB / GB).
+* **Online Clients & Peak Speed**: Active client count from the router's ARP table, along with the all-time peak download rate recorded.
+* **Micro Status**: Currently monitored interface (`br-lan • 1 Gbps`) and active connection tracking count (`nf_conntrack`).
+
+> **Tip:** The standby duration is fully customizable via the `XGP_SPEED_STANDBY_TIME` environment variable (in seconds, default: `180`).
+
+---
+
+### 2. Built-in System & Modem Screens (5 Seconds Each)
+After the 3-minute Speed Meter standby duration elapses, the display automatically cycles through the 5 built-in status screens (5 seconds each):
 
 1. **System Info (1/5)**:
    - Hostname
@@ -41,6 +87,8 @@ The interface automatically cycles through 5 informative screens:
    - **RSRQ** (Reference Signal Received Quality) bar and dB value
    - **RSRP** (Reference Signal Received Power) bar and dBm value
    - **SINR** (Signal to Interference-plus-Noise Ratio) bar and dB value
+
+*(From Modem Signal 5/5, the screen automatically transitions back to the Speed Meter for another 3 minutes).*
 
 ---
 
@@ -98,59 +146,34 @@ The application includes an extensive database (`isp_list.py`) mapping PLMN code
 2. Select the packages in `menuconfig`:
    ```bash
    make menuconfig
-   # Kernel modules --->
-   #   Video Support --->
-   #     <*> kmod-fb-tft-gc9307
-   # Utilities --->
-   #   <*> xgp-v3-screen
+   # Select:
+   # -> Kernel modules -> Video Support -> kmod-fb-tft-gc9307
+   # -> Utilities -> xgp-v3-screen
    ```
 
-3. Compile the packages:
+3. Compile the package:
    ```bash
-   make package/kmod-fb-tft-gc9307/compile V=s
    make package/xgp-v3-screen/compile V=s
    ```
 
-### Installing on the Device
-
-Copy the compiled `.ipk` packages to your router and install:
-```bash
-# Install kernel driver and screen UI
-opkg install kmod-fb-tft-gc9307_*.ipk
-opkg install xgp-v3-screen_*.ipk
-```
-
-Make sure **luci-app-5gmodem** is installed as well:
-```bash
-# Example installing luci-app-5gmodem
-opkg install luci-app-5gmodem_*.ipk
-```
-
-### Service Control
-
-The screen service runs automatically via `procd`:
-```bash
-# Check status / restart service
-/etc/init.d/zz_xgp_screen status
-/etc/init.d/zz_xgp_screen restart
-
-# Enable / Disable auto-start on boot
-/etc/init.d/zz_xgp_screen enable
-/etc/init.d/zz_xgp_screen disable
-```
+4. Transfer and install the `.ipk` on your XiGuaPi board:
+   ```bash
+   opkg install /tmp/xgp-v3-screen*.ipk
+   /etc/init.d/zz_xgp_screen enable
+   /etc/init.d/zz_xgp_screen start
+   ```
 
 ---
 
-## Credits & Upstream Source
+## Configuration & Environment Variables
 
-This project is based on the original source code by **[zzzz0317/xgp-v3-screen](https://github.com/zzzz0317/xgp-v3-screen)**.
-
-Special thanks to:
-* **[zzzz0317](https://github.com/zzzz0317)** for the original `xgp-v3-screen` project and `kmod-fb-tft-gc9307` display driver.
-* **[fildunsky/luci-app-5gmodem](https://github.com/fildunsky/luci-app-5gmodem)** for the cellular modem telemetry provider.
+You can customize runtime behavior using environment variables in OpenWrt:
+* `LV_LINUX_FBDEV_DEVICE`: Path to the framebuffer device (defaults to `/dev/fb0` or `/dev/fb1`).
+* `XGP_SPEED_IFACE`: Network interface monitored by the Speed Meter (defaults to `br-lan`).
+* `XGP_SPEED_STANDBY_TIME`: Duration of the Speed Meter screen in seconds per cycle (defaults to `180` = 3 minutes).
 
 ---
 
 ## License
 
-This project is licensed under the **GPL-3.0** License.
+GPL-3.0-or-later. See [LICENSE](LICENSE) for details.
