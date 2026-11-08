@@ -2,10 +2,11 @@
 // AmpliFi Style Speed Meter Screen for XiGuaPi V3
 
 #include "../ui.h"
+#include <stdlib.h>
+#include <stdio.h>
 
 lv_obj_t * ui_SpeedMeter = NULL;
 lv_obj_t * ui_barSpeedDownload = NULL;
-extern lv_obj_t * ui_barSpeedUpload;
 lv_obj_t * ui_barSpeedUpload = NULL;
 lv_obj_t * ui_valSpeedDownload = NULL;
 lv_obj_t * ui_valSpeedUpload = NULL;
