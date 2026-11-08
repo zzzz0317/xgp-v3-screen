@@ -12,19 +12,79 @@
 #include <string.h>
 #include <sys/utsname.h>
 #include <sys/sysinfo.h>
+#include <stdbool.h>
 
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-#define UNKNOWN_VALUE_REPLACE_STRING "未知"
-#define UNKNOWN_IP_REPLACE_STRING "无IP地址或接口不存在"
+#define UNKNOWN_VALUE_REPLACE_STRING "Unknown"
+#define UNKNOWN_IP_REPLACE_STRING "No IP Address"
 #define DEFAULT_VALUE_SIZE 64
 #define MAX_ENV_LINE_LENGTH 128
 
 #define MAX_IFACE_NAME_LEN 16
 #define MAX_IP_ADDR_LEN 16
+
+static uint32_t update_screen_data_time_counter = 0;
+static uint32_t update_modem_data_time_counter = 10;
+
+static long memory_total_bytes = 0;
+static char buf_memory_total_bytes[DEFAULT_VALUE_SIZE];
+
+static char buf_hostname[DEFAULT_VALUE_SIZE];
+static char buf_sys_version[DEFAULT_VALUE_SIZE];
+static char buf_build_id[DEFAULT_VALUE_SIZE];
+static char buf_kernel_version[DEFAULT_VALUE_SIZE];
+static char buf_load_avg[DEFAULT_VALUE_SIZE];
+static char buf_memory[DEFAULT_VALUE_SIZE];
+static char buf_uptime[DEFAULT_VALUE_SIZE];
+static char buf_local_time[DEFAULT_VALUE_SIZE];
+static char buf_modem_ip[DEFAULT_VALUE_SIZE];
+static char buf_wan_ip[DEFAULT_VALUE_SIZE];
+static char buf_lan_ip[DEFAULT_VALUE_SIZE];
+static char buf_active_connect[DEFAULT_VALUE_SIZE];
+static char buf_arp_count[DEFAULT_VALUE_SIZE];
+
+static char buf_modem_revision[DEFAULT_VALUE_SIZE];
+static char buf_modem_temperature[DEFAULT_VALUE_SIZE];
+static char buf_modem_voltage[DEFAULT_VALUE_SIZE];
+static char buf_modem_connect[DEFAULT_VALUE_SIZE];
+static char buf_modem_sim[DEFAULT_VALUE_SIZE];
+static char buf_modem_isp[DEFAULT_VALUE_SIZE];
+static char buf_modem_cqi[DEFAULT_VALUE_SIZE];
+static char buf_modem_ambr[DEFAULT_VALUE_SIZE];
+static char buf_modem_networkmode[DEFAULT_VALUE_SIZE];
+static char buf_modem_signal0name[DEFAULT_VALUE_SIZE];
+static int buf_modem_signal0value = 0;
+static int buf_modem_signal0min = 0;
+static int buf_modem_signal0max = 0;
+static char buf_modem_signal0unit[DEFAULT_VALUE_SIZE];
+static char buf_modem_signal1name[DEFAULT_VALUE_SIZE];
+static int buf_modem_signal1value = 0;
+static int buf_modem_signal1min = 0;
+static int buf_modem_signal1max = 0;
+static char buf_modem_signal1unit[DEFAULT_VALUE_SIZE];
+static char buf_modem_signal2name[DEFAULT_VALUE_SIZE];
+static int buf_modem_signal2value = 0;
+static int buf_modem_signal2min = 0;
+static int buf_modem_signal2max = 0;
+static char buf_modem_signal2unit[DEFAULT_VALUE_SIZE];
+
+static uint64_t last_lan_tx_bytes = 0;
+static uint64_t last_lan_rx_bytes = 0;
+static struct timespec last_speed_time = {0, 0};
+static double current_dl_mbps = 0.0;
+static double current_ul_mbps = 0.0;
+static double peak_dl_mbps = 0.0;
+static char buf_speed_dl[DEFAULT_VALUE_SIZE] = "0";
+static char buf_speed_ul[DEFAULT_VALUE_SIZE] = "0";
+static char buf_total_dl[DEFAULT_VALUE_SIZE] = "v 0.0M";
+static char buf_total_ul[DEFAULT_VALUE_SIZE] = "^ 0.0M";
+static char buf_speed_clients[DEFAULT_VALUE_SIZE] = "0 Online";
+static char buf_speed_peak[DEFAULT_VALUE_SIZE] = "0 M";
+static char buf_speed_conns[DEFAULT_VALUE_SIZE] = "Active: 0";
 
 static const char *getenv_default(const char *name, const char *dflt)
 {
@@ -241,13 +301,13 @@ int get_interface_ipv4_address(const char *iface_name, char *ip_addr, size_t ip_
     if (ioctl(sockfd, SIOCGIFADDR, &ifr) == -1)
     {
         close(sockfd);
-        return -1; // 接口不存在或没有IP地址
+        return -1; // Interface does not exist or has no IP address
     }
 
     sin = (struct sockaddr_in *)&ifr.ifr_addr;
     const char *ip = inet_ntoa(sin->sin_addr);
 
-    if (ip != NULL)
+    if (ip != NULL && strcmp(ip, "0.0.0.0") != 0 && strncmp(ip, "127.", 4) != 0)
     {
         strncpy(ip_addr, ip, ip_addr_len - 1);
         ip_addr[ip_addr_len - 1] = '\0';
@@ -259,32 +319,114 @@ int get_interface_ipv4_address(const char *iface_name, char *ip_addr, size_t ip_
     return -1;
 }
 
+static bool is_cellular_modem_iface(const char *name)
+{
+    if (name == NULL) return false;
+
+    // Standard cellular interfaces
+    if (strncmp(name, "wwan", 4) == 0) return true;
+    if (strncmp(name, "rmnet", 5) == 0) return true;
+    if (strncmp(name, "usb", 3) == 0) return true;
+    if (strncmp(name, "modem", 5) == 0) return true;
+
+    // OpenWrt netifd virtual protocol interfaces
+    if (strncmp(name, "3g-", 3) == 0) return true;
+    if (strncmp(name, "qmi-", 4) == 0) return true;
+    if (strncmp(name, "mbim-", 5) == 0) return true;
+    if (strncmp(name, "ncm-", 4) == 0) return true;
+
+    // Cellular modems mapped to eth2, eth3, eth4 (e.g. PCIe / CDC-ECM)
+    if (strcmp(name, "eth2") == 0 || strcmp(name, "eth3") == 0 || strcmp(name, "eth4") == 0) return true;
+
+    return false;
+}
+
+static int get_ubus_interface_ipv4(const char *ifname, char *ip_addr, size_t ip_addr_len)
+{
+    char cmd[128];
+    snprintf(cmd, sizeof(cmd), "ubus call network.interface.%s status 2>/dev/null", ifname);
+    FILE *fp = popen(cmd, "r");
+    if (!fp) return -1;
+
+    char buffer[1024];
+    size_t bytes = fread(buffer, 1, sizeof(buffer) - 1, fp);
+    pclose(fp);
+    if (bytes <= 0) return -1;
+    buffer[bytes] = '\0';
+
+    char *addr_ptr = strstr(buffer, "\"address\":");
+    if (!addr_ptr) addr_ptr = strstr(buffer, "\"address\" :");
+    if (addr_ptr)
+    {
+        char *quote1 = strchr(addr_ptr + 9, '\"');
+        if (quote1)
+        {
+            char *quote2 = strchr(quote1 + 1, '\"');
+            if (quote2)
+            {
+                size_t len = quote2 - (quote1 + 1);
+                if (len >= 7 && len < ip_addr_len)
+                {
+                    strncpy(ip_addr, quote1 + 1, len);
+                    ip_addr[len] = '\0';
+                    if (strcmp(ip_addr, "0.0.0.0") != 0 && strncmp(ip_addr, "127.", 4) != 0)
+                    {
+                        return 0;
+                    }
+                }
+            }
+        }
+    }
+    return -1;
+}
+
 int get_first_wwan_ipv4_address(char *ip_addr, size_t ip_addr_len)
 {
     struct if_nameindex *if_ni, *if_entry;
 
     if_ni = if_nameindex();
-    if (if_ni == NULL)
+    if (if_ni != NULL)
     {
-        perror("if_nameindex");
-        return -1;
+        for (if_entry = if_ni; if_entry->if_index != 0; if_entry++)
+        {
+            if (is_cellular_modem_iface(if_entry->if_name))
+            {
+                if (get_interface_ipv4_address(if_entry->if_name, ip_addr, ip_addr_len) == 0)
+                {
+                    if_freenameindex(if_ni);
+                    return 0;
+                }
+            }
+        }
+        if_freenameindex(if_ni);
     }
 
-    for (if_entry = if_ni; if_entry->if_index != 0; if_entry++)
+    // Try OpenWrt ubus network interfaces
+    const char *ubus_ifaces[] = {"modem", "wwan", "cellular", "lte", "wan_4g", "wan_5g", NULL};
+    for (int i = 0; ubus_ifaces[i] != NULL; i++)
     {
-        // 检查是否是wwan接口 (wwan0, wwan1, wwan2等) 或 rmnet_mhi 接口
-        if (strncmp(if_entry->if_name, "wwan", 4) == 0 || strncmp(if_entry->if_name, "rmnet_mhi", 9) == 0)
+        if (get_ubus_interface_ipv4(ubus_ifaces[i], ip_addr, ip_addr_len) == 0)
         {
-            if (get_interface_ipv4_address(if_entry->if_name, ip_addr, ip_addr_len) == 0)
-            {
-                if_freenameindex(if_ni);
-                return 0; // 成功找到接口并获取IP
-            }
+            return 0;
         }
     }
 
-    if_freenameindex(if_ni);
-    return -1; // 没有找到有IP的接口
+    // Fallback: if buf_modem_ip already has a valid IP (e.g. from modem_info.py)
+    if (strlen(buf_modem_ip) >= 7 &&
+        strcmp(buf_modem_ip, UNKNOWN_IP_REPLACE_STRING) != 0 &&
+        strcmp(buf_modem_ip, UNKNOWN_VALUE_REPLACE_STRING) != 0 &&
+        strcmp(buf_modem_ip, "-") != 0 &&
+        strcmp(buf_modem_ip, "0.0.0.0") != 0)
+    {
+        if (ip_addr != buf_modem_ip)
+        {
+            strncpy(ip_addr, buf_modem_ip, ip_addr_len - 1);
+            ip_addr[ip_addr_len - 1] = '\0';
+        }
+        return 0;
+    }
+
+    return -1;
 }
 
 int get_nf_conntrack_count()
@@ -349,50 +491,6 @@ int count_arp_online()
     return count;
 }
 
-static uint32_t update_screen_data_time_counter = 0;
-static uint32_t update_modem_data_time_counter = 10;
-
-static long memory_total_bytes = 0;
-static char buf_memory_total_bytes[DEFAULT_VALUE_SIZE];
-
-static char buf_hostname[DEFAULT_VALUE_SIZE];
-static char buf_sys_version[DEFAULT_VALUE_SIZE];
-static char buf_build_id[DEFAULT_VALUE_SIZE];
-static char buf_kernel_version[DEFAULT_VALUE_SIZE];
-static char buf_load_avg[DEFAULT_VALUE_SIZE];
-static char buf_memory[DEFAULT_VALUE_SIZE];
-static char buf_uptime[DEFAULT_VALUE_SIZE];
-static char buf_local_time[DEFAULT_VALUE_SIZE];
-static char buf_modem_ip[DEFAULT_VALUE_SIZE];
-static char buf_wan_ip[DEFAULT_VALUE_SIZE];
-static char buf_lan_ip[DEFAULT_VALUE_SIZE];
-static char buf_active_connect[DEFAULT_VALUE_SIZE];
-static char buf_arp_count[DEFAULT_VALUE_SIZE];
-
-static char buf_modem_revision[DEFAULT_VALUE_SIZE];
-static char buf_modem_temperature[DEFAULT_VALUE_SIZE];
-static char buf_modem_voltage[DEFAULT_VALUE_SIZE];
-static char buf_modem_connect[DEFAULT_VALUE_SIZE];
-static char buf_modem_sim[DEFAULT_VALUE_SIZE];
-static char buf_modem_isp[DEFAULT_VALUE_SIZE];
-static char buf_modem_cqi[DEFAULT_VALUE_SIZE];
-static char buf_modem_ambr[DEFAULT_VALUE_SIZE];
-static char buf_modem_networkmode[DEFAULT_VALUE_SIZE];
-static char buf_modem_signal0name[DEFAULT_VALUE_SIZE];
-static int buf_modem_signal0value = 0;
-static int buf_modem_signal0min = 0;
-static int buf_modem_signal0max = 0;
-static char buf_modem_signal0unit[DEFAULT_VALUE_SIZE];
-static char buf_modem_signal1name[DEFAULT_VALUE_SIZE];
-static int buf_modem_signal1value = 0;
-static int buf_modem_signal1min = 0;
-static int buf_modem_signal1max = 0;
-static char buf_modem_signal1unit[DEFAULT_VALUE_SIZE];
-static char buf_modem_signal2name[DEFAULT_VALUE_SIZE];
-static int buf_modem_signal2value = 0;
-static int buf_modem_signal2min = 0;
-static int buf_modem_signal2max = 0;
-static char buf_modem_signal2unit[DEFAULT_VALUE_SIZE];
 
 void parse_modem_info()
 {
@@ -427,16 +525,29 @@ void parse_modem_info()
     {
         while (fgets(line, sizeof(line), fp) != NULL)
         {
-            line[strcspn(line, "\n")] = 0;
-            char *key = strtok(line, ":");
-            char *value = strtok(NULL, ":");
-            if (key == NULL || value == NULL)
+            line[strcspn(line, "\r\n")] = 0;
+            char *colon = strchr(line, ':');
+            if (colon == NULL)
             {
                 continue;
             }
+            *colon = '\0';
+            char *key = line;
+            char *value = colon + 1;
             if (strcmp(key, "revision") == 0)
             {
                 strncpy(buf_modem_revision, value, DEFAULT_VALUE_SIZE - 1);
+            }
+            else if (strcmp(key, "modemip") == 0 || strcmp(key, "ip") == 0)
+            {
+                if (value != NULL && strlen(value) >= 7 &&
+                    strcmp(value, "-") != 0 &&
+                    strcmp(value, "unknown") != 0 &&
+                    strcmp(value, "0.0.0.0") != 0)
+                {
+                    strncpy(buf_modem_ip, value, DEFAULT_VALUE_SIZE - 1);
+                    buf_modem_ip[DEFAULT_VALUE_SIZE - 1] = '\0';
+                }
             }
             else if (strcmp(key, "temperature") == 0)
             {
@@ -601,6 +712,13 @@ void parse_modem_info()
         lv_bar_set_range(ui_valModemSignalBar3, buf_modem_signal2min, buf_modem_signal2max);
         lv_bar_set_value(ui_valModemSignalBar3, buf_modem_signal2value, LV_ANIM_OFF);
     }
+    if (ui_valModemIp != NULL && strlen(buf_modem_ip) >= 7 &&
+        strcmp(buf_modem_ip, UNKNOWN_IP_REPLACE_STRING) != 0 &&
+        strcmp(buf_modem_ip, UNKNOWN_VALUE_REPLACE_STRING) != 0 &&
+        strcmp(buf_modem_ip, "-") != 0)
+    {
+        lv_label_set_text(ui_valModemIp, buf_modem_ip);
+    }
 }
 
 static void update_static_value(void)
@@ -618,6 +736,121 @@ static void update_static_value(void)
     long page_size = sysconf(_SC_PAGE_SIZE);
     memory_total_bytes = pages * page_size;
     format_memory_size(memory_total_bytes, buf_memory_total_bytes);
+}
+
+static int read_interface_bytes(const char *iface, uint64_t *rx_bytes, uint64_t *tx_bytes)
+{
+    char path[128];
+    FILE *fp;
+
+    snprintf(path, sizeof(path), "/sys/class/net/%s/statistics/rx_bytes", iface);
+    fp = fopen(path, "r");
+    if (!fp) return -1;
+    if (fscanf(fp, "%llu", (unsigned long long *)rx_bytes) != 1) {
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+
+    snprintf(path, sizeof(path), "/sys/class/net/%s/statistics/tx_bytes", iface);
+    fp = fopen(path, "r");
+    if (!fp) return -1;
+    if (fscanf(fp, "%llu", (unsigned long long *)tx_bytes) != 1) {
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+
+    return 0;
+}
+
+static void update_speed_meter_data(void)
+{
+    const char *iface = getenv_default("XGP_SPEED_IFACE", "br-lan");
+    uint64_t rx = 0, tx = 0;
+
+    if (read_interface_bytes(iface, &rx, &tx) != 0) {
+        return;
+    }
+
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+
+    if (last_speed_time.tv_sec != 0) {
+        double dt = (now.tv_sec - last_speed_time.tv_sec) + 
+                    (now.tv_nsec - last_speed_time.tv_nsec) / 1e9;
+        if (dt > 0.1) {
+            uint64_t delta_rx = (rx >= last_lan_rx_bytes) ? (rx - last_lan_rx_bytes) : 0;
+            uint64_t delta_tx = (tx >= last_lan_tx_bytes) ? (tx - last_lan_tx_bytes) : 0;
+
+            // On LAN bridge (br-lan):
+            // tx_bytes = transmitted to clients (Client Download)
+            // rx_bytes = received from clients (Client Upload)
+            double dl_bps = (delta_tx * 8.0) / dt;
+            double ul_bps = (delta_rx * 8.0) / dt;
+
+            current_dl_mbps = dl_bps / 1000000.0;
+            current_ul_mbps = ul_bps / 1000000.0;
+
+            if (current_dl_mbps > peak_dl_mbps) {
+                peak_dl_mbps = current_dl_mbps;
+            }
+
+            if (current_dl_mbps >= 100.0) {
+                snprintf(buf_speed_dl, sizeof(buf_speed_dl), "%.0f", current_dl_mbps);
+            } else if (current_dl_mbps >= 1.0) {
+                snprintf(buf_speed_dl, sizeof(buf_speed_dl), "%.1f", current_dl_mbps);
+            } else {
+                snprintf(buf_speed_dl, sizeof(buf_speed_dl), "%.1f", current_dl_mbps);
+            }
+
+            if (current_ul_mbps >= 100.0) {
+                snprintf(buf_speed_ul, sizeof(buf_speed_ul), "%.0f", current_ul_mbps);
+            } else if (current_ul_mbps >= 1.0) {
+                snprintf(buf_speed_ul, sizeof(buf_speed_ul), "%.1f", current_ul_mbps);
+            } else {
+                snprintf(buf_speed_ul, sizeof(buf_speed_ul), "%.1f", current_ul_mbps);
+            }
+
+            char tmp_mem[32];
+            format_memory_size((long)tx, tmp_mem);
+            snprintf(buf_total_dl, sizeof(buf_total_dl), "v %s", tmp_mem);
+            format_memory_size((long)rx, tmp_mem);
+            snprintf(buf_total_ul, sizeof(buf_total_ul), "^ %s", tmp_mem);
+
+            int online_devs = count_arp_online();
+            snprintf(buf_speed_clients, sizeof(buf_speed_clients), "%d Devs", online_devs >= 0 ? online_devs : 0);
+
+            if (peak_dl_mbps >= 100.0) {
+                snprintf(buf_speed_peak, sizeof(buf_speed_peak), "%.0f M", peak_dl_mbps);
+            } else {
+                snprintf(buf_speed_peak, sizeof(buf_speed_peak), "%.1f M", peak_dl_mbps);
+            }
+
+            int conns = get_nf_conntrack_count();
+            snprintf(buf_speed_conns, sizeof(buf_speed_conns), "Active: %d", conns >= 0 ? conns : 0);
+
+            if (ui_valSpeedDownload != NULL) lv_label_set_text(ui_valSpeedDownload, buf_speed_dl);
+            if (ui_valSpeedUpload != NULL) lv_label_set_text(ui_valSpeedUpload, buf_speed_ul);
+            if (ui_valTotalDl != NULL) lv_label_set_text(ui_valTotalDl, buf_total_dl);
+            if (ui_valTotalUl != NULL) lv_label_set_text(ui_valTotalUl, buf_total_ul);
+            if (ui_valSpeedClients != NULL) lv_label_set_text(ui_valSpeedClients, buf_speed_clients);
+            if (ui_valSpeedPeak != NULL) lv_label_set_text(ui_valSpeedPeak, buf_speed_peak);
+            if (ui_lblSpeedConns != NULL) lv_label_set_text(ui_lblSpeedConns, buf_speed_conns);
+
+            int bar_dl_val = (int)((current_dl_mbps / 200.0) * 100.0);
+            int bar_ul_val = (int)((current_ul_mbps / 200.0) * 100.0);
+            if (bar_dl_val > 100) bar_dl_val = 100;
+            if (bar_ul_val > 100) bar_ul_val = 100;
+
+            if (ui_barSpeedDownload != NULL) lv_bar_set_value(ui_barSpeedDownload, bar_dl_val, LV_ANIM_OFF);
+            if (ui_barSpeedUpload != NULL) lv_bar_set_value(ui_barSpeedUpload, bar_ul_val, LV_ANIM_OFF);
+        }
+    }
+
+    last_lan_rx_bytes = rx;
+    last_lan_tx_bytes = tx;
+    last_speed_time = now;
 }
 
 static void update_screen_data(void)
@@ -698,7 +931,7 @@ static void update_screen_data(void)
             uptime %= 3600;
             int minutes = uptime / 60;
             int seconds = uptime % 60;
-            snprintf(buf_uptime, DEFAULT_VALUE_SIZE, "%d 天 %d 小时 %d 分 %d 秒",
+            snprintf(buf_uptime, DEFAULT_VALUE_SIZE, "%d d %d h %d m %d s",
                      days, hours, minutes, seconds);
             lv_label_set_text(ui_valUptime, buf_uptime);
         }
@@ -759,6 +992,7 @@ static void update_screen_data(void)
         snprintf(buf_arp_count, DEFAULT_VALUE_SIZE, "%d", count_arp_online());
         lv_label_set_text(ui_valArpCount, buf_arp_count);
     }
+    update_speed_meter_data();
 }
 
 int main(void)
@@ -771,6 +1005,8 @@ int main(void)
     ui_init();
     /*Handle LVGL tasks*/
     update_static_value();
+    parse_modem_info();
+    update_screen_data();
     while (1)
     {
         lv_timer_handler();

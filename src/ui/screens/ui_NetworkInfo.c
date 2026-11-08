@@ -48,7 +48,7 @@ void ui_NetworkInfo_screen_init(void)
     lv_obj_set_width(ui_txtNetworkInfo, lv_pct(100));
     lv_obj_set_height(ui_txtNetworkInfo, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_txtNetworkInfo, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtNetworkInfo, "网络信息");
+    lv_label_set_text(ui_txtNetworkInfo, "Network Info");
     ui_object_set_themeable_style_property(ui_txtNetworkInfo, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_COLOR,
                                            _ui_theme_color_default);
     ui_object_set_themeable_style_property(ui_txtNetworkInfo, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_OPA,
@@ -131,7 +131,7 @@ void ui_NetworkInfo_screen_init(void)
     lv_obj_set_x(ui_txtActiveConnect, -100);
     lv_obj_set_y(ui_txtActiveConnect, 60);
     lv_obj_set_align(ui_txtActiveConnect, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtActiveConnect, "活动连接数: ");
+    lv_label_set_text(ui_txtActiveConnect, "Connections: ");
     lv_obj_set_style_text_align(ui_txtActiveConnect, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtActiveConnect, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -151,7 +151,7 @@ void ui_NetworkInfo_screen_init(void)
     lv_obj_set_x(ui_txtArpCount, 60);
     lv_obj_set_y(ui_txtArpCount, 60);
     lv_obj_set_align(ui_txtArpCount, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtArpCount, "在线设备: ");
+    lv_label_set_text(ui_txtArpCount, "Clients: ");
     lv_obj_set_style_text_align(ui_txtArpCount, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtArpCount, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 

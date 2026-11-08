@@ -46,7 +46,7 @@ void ui_SystemInfo_screen_init(void)
     lv_obj_set_width(ui_txtSystemInfo, lv_pct(100));
     lv_obj_set_height(ui_txtSystemInfo, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_txtSystemInfo, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtSystemInfo, "系统信息");
+    lv_label_set_text(ui_txtSystemInfo, "System Info");
     ui_object_set_themeable_style_property(ui_txtSystemInfo, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_COLOR,
                                            _ui_theme_color_default);
     ui_object_set_themeable_style_property(ui_txtSystemInfo, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_OPA,
@@ -72,7 +72,7 @@ void ui_SystemInfo_screen_init(void)
     lv_obj_set_x(ui_txtHostname, -100);
     lv_obj_set_y(ui_txtHostname, -30);
     lv_obj_set_align(ui_txtHostname, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtHostname, "主机名称: ");
+    lv_label_set_text(ui_txtHostname, "Hostname: ");
     lv_obj_set_style_text_align(ui_txtHostname, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtHostname, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -91,7 +91,7 @@ void ui_SystemInfo_screen_init(void)
     lv_obj_set_x(ui_txtSysVersion, -100);
     lv_obj_set_y(ui_txtSysVersion, 0);
     lv_obj_set_align(ui_txtSysVersion, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtSysVersion, "系统名称: ");
+    lv_label_set_text(ui_txtSysVersion, "OS: ");
     lv_obj_set_style_text_align(ui_txtSysVersion, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtSysVersion, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -110,7 +110,7 @@ void ui_SystemInfo_screen_init(void)
     lv_obj_set_x(ui_txtBuildId, -100);
     lv_obj_set_y(ui_txtBuildId, 30);
     lv_obj_set_align(ui_txtBuildId, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtBuildId, "系统版本: ");
+    lv_label_set_text(ui_txtBuildId, "Build: ");
     lv_obj_set_style_text_align(ui_txtBuildId, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtBuildId, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -129,7 +129,7 @@ void ui_SystemInfo_screen_init(void)
     lv_obj_set_x(ui_txtKernelVersion, -100);
     lv_obj_set_y(ui_txtKernelVersion, 60);
     lv_obj_set_align(ui_txtKernelVersion, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtKernelVersion, "内核版本: ");
+    lv_label_set_text(ui_txtKernelVersion, "Kernel: ");
     lv_obj_set_style_text_align(ui_txtKernelVersion, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtKernelVersion, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 

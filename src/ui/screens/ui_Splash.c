@@ -22,7 +22,7 @@ void ui_event_Splash(lv_event_t * e)
         fadeinfromright_Animation(ui_Prodcut_Name, 0);
     }
     if(event_code == LV_EVENT_SCREEN_LOADED) {
-        _ui_screen_change(&ui_SystemInfo, LV_SCR_LOAD_ANIM_FADE_ON, 500, 5000, &ui_SystemInfo_screen_init);
+        _ui_screen_change(&ui_SpeedMeter, LV_SCR_LOAD_ANIM_FADE_ON, 500, 3000, &ui_SpeedMeter_screen_init);
     }
 }
 
@@ -50,7 +50,7 @@ void ui_Splash_screen_init(void)
     lv_obj_set_x(ui_Prodcut_Name, 60);
     lv_obj_set_y(ui_Prodcut_Name, -25);
     lv_obj_set_align(ui_Prodcut_Name, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_Prodcut_Name, "西瓜皮 V3");
+    lv_label_set_text(ui_Prodcut_Name, "XiGuaPi V3");
     lv_obj_set_style_text_color(ui_Prodcut_Name, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_Prodcut_Name, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_Prodcut_Name, &ui_font_MiSans24, LV_PART_MAIN | LV_STATE_DEFAULT);

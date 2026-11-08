@@ -3,6 +3,7 @@ SET(SOURCES screens/ui_Boot.c
     screens/ui_SystemInfo.c
     screens/ui_SystemStatus.c
     screens/ui_NetworkInfo.c
+    screens/ui_SpeedMeter.c
     screens/ui_ModemInfo.c
     screens/ui_ModemSignal.c
     ui_theme_manager.c

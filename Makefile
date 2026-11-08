@@ -32,6 +32,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/zz
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/bin/zz_xgp_screen $(1)/usr/zz/zz_xgp_screen
 	$(INSTALL_BIN) ./files/modem_info.py $(1)/usr/zz/modem_info.py
+	$(INSTALL_DATA) ./files/isp_list.py $(1)/usr/zz/isp_list.py
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/zz_xgp_screen.init $(1)/etc/init.d/zz_xgp_screen
 endef

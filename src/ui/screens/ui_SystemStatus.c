@@ -46,7 +46,7 @@ void ui_SystemStatus_screen_init(void)
     lv_obj_set_width(ui_txtSystemStatus, lv_pct(100));
     lv_obj_set_height(ui_txtSystemStatus, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_txtSystemStatus, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtSystemStatus, "系统状态");
+    lv_label_set_text(ui_txtSystemStatus, "System Status");
     ui_object_set_themeable_style_property(ui_txtSystemStatus, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_COLOR,
                                            _ui_theme_color_default);
     ui_object_set_themeable_style_property(ui_txtSystemStatus, LV_PART_MAIN | LV_STATE_DEFAULT, LV_STYLE_TEXT_OPA,
@@ -72,7 +72,7 @@ void ui_SystemStatus_screen_init(void)
     lv_obj_set_x(ui_txtLoadAvg, -100);
     lv_obj_set_y(ui_txtLoadAvg, -30);
     lv_obj_set_align(ui_txtLoadAvg, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtLoadAvg, "平均负载: ");
+    lv_label_set_text(ui_txtLoadAvg, "Load Avg: ");
     lv_obj_set_style_text_align(ui_txtLoadAvg, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtLoadAvg, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -91,7 +91,7 @@ void ui_SystemStatus_screen_init(void)
     lv_obj_set_x(ui_txtMemory, -100);
     lv_obj_set_y(ui_txtMemory, 0);
     lv_obj_set_align(ui_txtMemory, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtMemory, "内存占用: ");
+    lv_label_set_text(ui_txtMemory, "Memory: ");
     lv_obj_set_style_text_align(ui_txtMemory, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtMemory, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -110,7 +110,7 @@ void ui_SystemStatus_screen_init(void)
     lv_obj_set_x(ui_txtUptime, -100);
     lv_obj_set_y(ui_txtUptime, 30);
     lv_obj_set_align(ui_txtUptime, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtUptime, "运行时间: ");
+    lv_label_set_text(ui_txtUptime, "Uptime: ");
     lv_obj_set_style_text_align(ui_txtUptime, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtUptime, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -120,7 +120,7 @@ void ui_SystemStatus_screen_init(void)
     lv_obj_set_x(ui_valUptime, 50);
     lv_obj_set_y(ui_valUptime, 30);
     lv_obj_set_align(ui_valUptime, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_valUptime, "150 天 14 小时 13 分 12 秒");
+    lv_label_set_text(ui_valUptime, "150 d 14 h 13 m 12 s");
     lv_obj_set_style_text_font(ui_valUptime, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_txtLocalTime = lv_label_create(ui_SystemStatus);
@@ -129,7 +129,7 @@ void ui_SystemStatus_screen_init(void)
     lv_obj_set_x(ui_txtLocalTime, -100);
     lv_obj_set_y(ui_txtLocalTime, 60);
     lv_obj_set_align(ui_txtLocalTime, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_txtLocalTime, "本地时间: ");
+    lv_label_set_text(ui_txtLocalTime, "Local Time: ");
     lv_obj_set_style_text_align(ui_txtLocalTime, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_txtLocalTime, &ui_font_MiSans16, LV_PART_MAIN | LV_STATE_DEFAULT);
 

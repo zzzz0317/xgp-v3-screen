@@ -151,6 +151,7 @@ void ui_init(void)
     ui_SystemInfo_screen_init();
     ui_SystemStatus_screen_init();
     ui_NetworkInfo_screen_init();
+    ui_SpeedMeter_screen_init();
     ui_ModemInfo_screen_init();
     ui_ModemSignal_screen_init();
     ui____initial_actions0 = lv_obj_create(NULL);
@@ -164,6 +165,7 @@ void ui_destroy(void)
     ui_SystemInfo_screen_destroy();
     ui_SystemStatus_screen_destroy();
     ui_NetworkInfo_screen_destroy();
+    ui_SpeedMeter_screen_destroy();
     ui_ModemInfo_screen_destroy();
     ui_ModemSignal_screen_destroy();
 }
